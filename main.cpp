@@ -1,3 +1,4 @@
+#include<Windows.h>
 #include <iostream>
 
 char* Board = nullptr;
@@ -12,7 +13,7 @@ using namespace std;
 
 void FillBoardNumbers();
 void FillMines(uint16_t minesCount);
-void FillBoard();
+void DrawField(wchar_t* screen);
 
 int main()
 {
@@ -22,11 +23,35 @@ int main()
 	const uint32_t minesCount = 15;
 	mines = new uint16_t[minesCount];
 
+	HANDLE consoleHandle = CreateConsoleScreenBuffer(GENERIC_READ | GENERIC_WRITE, NULL, NULL, CONSOLE_TEXTMODE_BUFFER, NULL);
+
+	SetConsoleActiveScreenBuffer(consoleHandle);
+
 	bool isRunning = true;
+
+	int screenBufferSize = ScreenWidth * ScreenHeight;
+
+	wchar_t* screen = new wchar_t[screenBufferSize];
+
+	for (int i = 0; i < screenBufferSize; i++)
+		screen[i] = L' ';
+
+	DWORD bytesWritten = 0;
 
 	FillMines(minesCount);
 
 	FillBoardNumbers();
+
+	while (isRunning)
+	{
+		DrawField(screen);
+
+		WriteConsoleOutputCharacter(consoleHandle, screen, screenBufferSize, { 0, 0 }, &bytesWritten);
+	}
+
+	CloseHandle(consoleHandle);
+
+	cout << "Game over!! :(, your score: " << endl;
 
 	return 0;
 }
@@ -54,12 +79,8 @@ void FillMines(uint16_t minesCount)
 	}
 
 	for (size_t index = 0; index < minesCount; index++)
-	{
 		if (Board[index] != 'X')
-		{
 			Board[index] = '0';
-		}
-	}
 }
 
 void FillBoardNumbers()
@@ -70,57 +91,52 @@ void FillBoardNumbers()
 	{
 		for (size_t x = 0; x < BoardWidth; x++)
 		{
-			int nearMinesCount = 0;
-
-			nearMinesCount += Board[y * BoardWidth + x] == 'X';
-
-			// Same row
-
-			// Same Column
-			nearMinesCount += y > 0 && Board[(y + 1) * BoardWidth + x] == 'X';
-
-			// Next Column
-			nearMinesCount += x + 1 < BoardWidth && Board[y * BoardWidth + (x + 1)] == 'X';
-
-			// Prev Column
-			nearMinesCount += x - 1 < 0 && Board[y * BoardWidth + (x - 1)] == 'X';
-
-			// Next row is available
-			if (y + 1 < BoardHeight)
+			if (Board[y * BoardWidth + x] != 'X')
 			{
-				// Same Column
-				nearMinesCount += Board[(y + 1) * BoardWidth + x] == 'X';
+				int nearMinesCount = 0;
 
+				// Same row
 				// Next Column
-				nearMinesCount += x + 1 < BoardWidth && Board[(y + 1) * BoardWidth + (x + 1)] == 'X';
+				nearMinesCount += (x + 1) < BoardWidth && Board[y * BoardWidth + (x + 1)] == 'X';
 
 				// Prev Column
-				nearMinesCount += x - 1 < 0 && Board[(y + 1) * BoardWidth + (x - 1)] == 'X';
-			}
+				nearMinesCount += x - 1 > 0 && Board[y * BoardWidth + (x - 1)] == 'X';
 
-			// Prev row is available
-			if (y - 1 > 0)
-			{
-				// Same Column
-				nearMinesCount += Board[(y - 1) * BoardWidth + x] == 'X';
+				// Next row is available
+				if (y + 1 < BoardHeight)
+				{
+					// Same Column
+					nearMinesCount += Board[(y + 1) * BoardWidth + x] == 'X';
 
-				// Next Column
-				nearMinesCount += x + 1 < BoardWidth && Board[(y - 1) * BoardWidth + (x + 1)] == 'X';
+					// Next Column
+					nearMinesCount += x + 1 < BoardWidth && Board[(y + 1) * BoardWidth + (x + 1)] == 'X';
 
-				// Prev Column
-				nearMinesCount += x - 1 < 0 && Board[(y - 1) * BoardWidth + (x - 1)] == 'X';
+					// Prev Column
+					nearMinesCount += x - 1 > 0 && Board[(y + 1) * BoardWidth + (x - 1)] == 'X';
+				}
+
+				// Prev row is available
+				if (y - 1 > 0)
+				{
+					// Same Column
+					nearMinesCount += Board[(y - 1) * BoardWidth + x] == 'X';
+
+					// Next Column
+					nearMinesCount += x + 1 < BoardWidth && Board[(y - 1) * BoardWidth + (x + 1)] == 'X';
+
+					// Prev Column
+					nearMinesCount += x - 1 > 0 && Board[(y - 1) * BoardWidth + (x - 1)] == 'X';
+				}
+
+				Board[y * BoardWidth + x] = nearMinesCount + '0';
 			}
 		}
 	}
 }
 
-void FillBoard()
+void DrawField(wchar_t* screen)
 {
-	uint32_t totalBlocks = BoardHeight * BoardWidth;
-
-	for (size_t index = 0; index < totalBlocks; index++)
-	{
-		if (Board[index] != 'X')
-			Board[index] = 0x176;
-	}
+	for (int x = 0; x < BoardWidth; x++)
+		for (int y = 0; y < BoardHeight; y++)
+			screen[y * ScreenWidth + x] = Board[y * BoardWidth + x];
 }
